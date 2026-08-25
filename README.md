@@ -1,5 +1,11 @@
 # QuoteAgent
 
+**Live demo:** [gai-agent.vercel.app](https://gai-agent.vercel.app/)
+
+> The deployment sits behind Vercel Deployment Protection, so a visitor may
+> hit a Vercel auth prompt before reaching the app — that's deliberate, since
+> every enquiry spends this project's Google Gemini free-tier quota.
+
 A configurable quote and lead-qualification agent for small service
 businesses — cleaners, gardeners, movers, mobile mechanics, photographers.
 Each business defines its own services, service area, pricing rules,
