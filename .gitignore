@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# eve local runtime cache, logs, and dev-server state
+/.eve/
