@@ -6,5 +6,5 @@ export default defineAgent({
   // GOOGLE_GENERATIVE_AI_API_KEY from the environment. The reasoning load here
   // is deliberately light: pricing, service-area and review decisions all live
   // in code under agent/lib/quote-agent, not in the model.
-  model: google("gemini-3.6-flash"),
+  model: google("gemini-3.5-flash"),
 });
