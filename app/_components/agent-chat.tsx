@@ -21,7 +21,9 @@ import {
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { MODEL_HEADER, type AvailableModelId } from "@/agent/lib/models";
 import { AgentMessage } from "./agent-message";
+import { ModelPicker, useSelectedModel } from "./model-picker";
 
 const AGENT_NAME = "eve-agent";
 
@@ -33,6 +35,7 @@ export function AgentChat({
   readonly sessionless?: boolean;
 }) {
   const [cancellationError, setCancellationError] = useState<string>();
+  const [selectedModel, setSelectedModel] = useSelectedModel();
   const agent = useEveAgent({
     initialSession:
       sessionId === undefined
@@ -42,6 +45,9 @@ export function AgentChat({
             streamIndex: 0,
           },
     resume: sessionId !== undefined,
+    // Resolved fresh before every request, so a mid-conversation model
+    // switch (e.g. after hitting a quota limit) applies to the next message.
+    headers: () => ({ [MODEL_HEADER]: selectedModel }),
     onSessionChange(session) {
       if (sessionId === undefined && session !== undefined) {
         // Next patches window.history to navigate, which would detach the active stream.
@@ -126,7 +132,11 @@ export function AgentChat({
   return (
     <main className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
       {showConversationLayout ? (
-        <ChatHeader canStartNewChat={activeSessionId !== undefined} />
+        <ChatHeader
+          canStartNewChat={activeSessionId !== undefined}
+          onModelChange={setSelectedModel}
+          selectedModel={selectedModel}
+        />
       ) : null}
 
       {showConversationLayout ? (
@@ -205,11 +215,22 @@ function ErrorMessage({ message }: { readonly message: string }) {
   );
 }
 
-function ChatHeader({ canStartNewChat }: { readonly canStartNewChat: boolean }) {
+function ChatHeader({
+  canStartNewChat,
+  onModelChange,
+  selectedModel,
+}: {
+  readonly canStartNewChat: boolean;
+  readonly onModelChange: (model: AvailableModelId) => void;
+  readonly selectedModel: AvailableModelId;
+}) {
   return (
     <header className="pointer-events-none fixed top-0 right-0 left-0 z-20 h-14">
       <div className="relative mx-auto flex h-full w-full max-w-3xl items-center justify-center bg-background px-24">
         <span className="truncate text-muted-foreground text-sm">{AGENT_NAME}</span>
+        <div className="pointer-events-auto fixed top-2 left-6">
+          <ModelPicker onChange={onModelChange} value={selectedModel} />
+        </div>
         {canStartNewChat ? (
           <Button
             aria-label="Start a new chat"

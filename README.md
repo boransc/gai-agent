@@ -113,14 +113,18 @@ exhausted in production too — check usage at
 [aistudio.google.com](https://aistudio.google.com/apikey) before relying on a
 deployment for a demo.
 
-**Replace the placeholder auth before any browser reaches this in
-production.** [`agent/channels/eve.ts`](agent/channels/eve.ts) currently
-includes `placeholderAuth()`, which the framework will not let handle real
-browser traffic — deploying without changing it means production requests
-get rejected. Replace it with your own auth check, or with `none()` from
-`eve/channels/auth` if you deliberately want this demo reachable by anyone
-with the URL (fine for a personal demo, not for anything with real customer
-data).
+**Turn on Vercel Deployment Protection.** The route auth in
+[`agent/channels/eve.ts`](agent/channels/eve.ts) ends in `none()`, which
+accepts anonymous callers — so the agent is protected *only* by whatever
+gates the deployment in front of it. With protection off, anyone holding the
+URL can start sessions and spend the project's model quota. Enable it under
+the Vercel project's **Settings → Deployment Protection** (which options are
+available depends on your plan).
+
+For anything beyond a personal demo, replace `none()` with a real
+authenticator instead — Auth.js, Clerk, your own JWT or API-key verifier, or
+any custom `AuthFn`. Route auth is an ordered walk and `none()` halts it, so
+it must always be the last entry.
 
 Then deploy:
 
