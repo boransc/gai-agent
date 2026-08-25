@@ -35,7 +35,11 @@ export function AgentChat({
   readonly sessionless?: boolean;
 }) {
   const [cancellationError, setCancellationError] = useState<string>();
-  const [selectedModel, setSelectedModel] = useSelectedModel();
+  const {
+    model: selectedModel,
+    ref: selectedModelRef,
+    select: setSelectedModel,
+  } = useSelectedModel();
   const agent = useEveAgent({
     initialSession:
       sessionId === undefined
@@ -45,9 +49,12 @@ export function AgentChat({
             streamIndex: 0,
           },
     resume: sessionId !== undefined,
-    // Resolved fresh before every request, so a mid-conversation model
-    // switch (e.g. after hitting a quota limit) applies to the next message.
-    headers: () => ({ [MODEL_HEADER]: selectedModel }),
+    // The client calls this before every request, but it only ever holds the
+    // instance captured when the store was created — so it must read the ref
+    // rather than close over `selectedModel`, which would pin it to the
+    // first render's default. Lets a mid-conversation switch (e.g. after
+    // hitting a quota limit) apply to the very next message.
+    headers: () => ({ [MODEL_HEADER]: selectedModelRef.current }),
     onSessionChange(session) {
       if (sessionId === undefined && session !== undefined) {
         // Next patches window.history to navigate, which would detach the active stream.
