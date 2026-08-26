@@ -22,10 +22,23 @@ import { Shimmer } from "@/components/ai-elements/shimmer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { MODEL_HEADER, type AvailableModelId } from "@/agent/lib/models";
+import { activeBusiness } from "@/agent/lib/quote-agent/config";
 import { AgentMessage } from "./agent-message";
+import { toFriendlyError } from "./friendly-error";
 import { ModelPicker, useSelectedModel } from "./model-picker";
 
-const AGENT_NAME = "eve-agent";
+const AGENT_NAME = activeBusiness.businessName;
+
+/**
+ * Shown on the empty chat so someone arriving cold knows what this is for and
+ * what a useful first message looks like. Each one is a complete enquiry —
+ * postcode, vehicle, symptom — because that is what gets to a quote fastest.
+ */
+const STARTERS = [
+  "My battery's dead — I'm at CR0 2RF with a 2018 Ford Focus.",
+  "My car won't start, I'm at CR0 2RF in a Ford Focus.",
+  "I need new brake pads on my Vauxhall Corsa, CR0 2RF.",
+] as const;
 
 export function AgentChat({
   sessionId,
@@ -194,16 +207,48 @@ export function AgentChat({
       >
         {showConversationLayout ? null : (
           <div className="flex flex-col items-center gap-3 text-center">
-            <h1 className="font-medium text-5xl tracking-tighter">{AGENT_NAME}</h1>
+            <span className="font-medium text-brand text-sm tracking-wide uppercase">
+              {AGENT_NAME}
+            </span>
+            <h1 className="font-medium text-4xl tracking-tighter sm:text-5xl">
+              Get a quote in a couple of minutes
+            </h1>
+            <p className="max-w-md text-balance text-muted-foreground">
+              Tell me where the vehicle is, what it is, and what it&apos;s doing.
+              You&apos;ll get an itemised price — or a straight answer if we
+              can&apos;t help. We cover {activeBusiness.serviceRadiusMiles} miles
+              around {activeBusiness.basePostcode}.
+            </p>
           </div>
         )}
         <div className="w-full">{composer}</div>
+        {showConversationLayout ? null : (
+          <div className="flex w-full flex-wrap justify-center gap-2">
+            {STARTERS.map((starter) => (
+              <Button
+                className="h-auto whitespace-normal py-1.5 text-left text-muted-foreground"
+                key={starter}
+                onClick={() => void agent.send(starter)}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {starter}
+              </Button>
+            ))}
+          </div>
+        )}
       </div>
     </main>
   );
 }
 
 function ErrorMessage({ message }: { readonly message: string }) {
+  // Raw provider text is never rendered: it is written for whoever operates
+  // the agent, and can name internal files or billing state.
+  const friendly = toFriendlyError(message);
+  if (!friendly) return null;
+
   return (
     <Message className="max-w-full" from="assistant">
       <MessageContent>
@@ -213,8 +258,8 @@ function ErrorMessage({ message }: { readonly message: string }) {
         >
           <AlertCircleIcon className="mt-0.5 size-4 shrink-0 text-destructive" />
           <div>
-            <p className="font-medium">Request failed</p>
-            <p className="mt-0.5 text-muted-foreground">{message}</p>
+            <p className="font-medium">{friendly.title}</p>
+            <p className="mt-0.5 text-muted-foreground">{friendly.detail}</p>
           </div>
         </div>
       </MessageContent>
