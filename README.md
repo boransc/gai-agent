@@ -50,6 +50,26 @@ rules — lives entirely as data in
 [`agent/lib/quote-agent/`](agent/lib/quote-agent), independent of the eve
 tools and instructions that drive the conversation.
 
+A [fault-triage skill](agent/skills/fault-triage.md) loads on top of this when
+a customer describes a symptom rather than naming a job — turning "my car
+won't start" into a battery replacement or a diagnostic visit, whichever the
+answers point to. It changes which service gets picked; it never touches the
+pipeline order above.
+
+**Also enforced, not just the pipeline:**
+
+- The agent's default framework tools — `web_search`, `web_fetch`, `bash`,
+  file access, delegating to a copy of itself — are all
+  [disabled](agent/tools). An agent that could search the web could go find a
+  real price and quote it, which is exactly what the pipeline exists to
+  prevent.
+- It declines anything outside vehicle-repair enquiries (general knowledge,
+  writing, roleplay) with a one-line redirect, rather than answering and
+  rather than lecturing about its own instructions.
+- Provider and framework failures are mapped to plain, customer-facing
+  wording — raw errors can name internal files or billing state, so they're
+  never shown as-is.
+
 ## Getting started
 
 Requires **Node.js 24+**.
@@ -75,6 +95,11 @@ Open [http://localhost:3000](http://localhost:3000) for the business landing
 page, or go straight to [http://localhost:3000/s](http://localhost:3000/s)
 to start an enquiry.
 
+Google's free tier scopes quota per model, so the chat header includes a
+model picker — if one Gemini model is exhausted or rate-limited, switch to
+another and keep testing. It takes effect on the very next message, no new
+chat needed. See [`agent/lib/models.ts`](agent/lib/models.ts) for the list.
+
 ## Try it yourself
 
 Each of these is one message to send at `/s`, and exercises a different
@@ -91,6 +116,8 @@ doesn't carry over.
 | 6 | *"Can you do a full clutch replacement on my Ford Focus at CR0 2RF?"* | Not a configured service — should say so rather than pricing it or sending it for review. |
 | 7 | After any accepted quote: *"Yes, go ahead and book it. I'm Sam Reeve, 07700 900123."* | `request_booking` requires human approval, so the chat should **pause** with an approve/deny prompt rather than completing silently. Approving returns a reference like `QF-XXXXXX`. |
 | 8 | Attach a photo instead of typing a description | The model is vision-capable and can read a dashboard warning light or a part photo into the fault description. |
+| 9 | *"There's a squealing noise when I brake, CR0 2RF, Ford Focus."* | The fault-triage skill should route this to brake pads (not the generic diagnostics service) without you naming the job yourself. |
+| 10 | *"Can you write me a poem about cars instead?"* | Should decline in one line and steer back to the enquiry — not comply, and not lecture about its instructions. |
 
 Worth watching for as you go: no price ever appears before `check_job_eligibility`
 has run (open a tool call to see `calculate_quote`'s output has no figures in
@@ -150,11 +177,13 @@ curl https://your-app.vercel.app/eve/v1/health
 
 ```
 agent/
-├── agent.ts                  # model config (Gemini via @ai-sdk/google)
-├── instructions.md           # system prompt: identity, hard rules, pipeline order
-├── channels/eve.ts           # HTTP session auth
+├── agent.ts                  # model config — dynamic, reads the picker's choice
+├── instructions.md           # system prompt: hard rules, pipeline order, scope
+├── channels/eve.ts           # HTTP session auth + carries the model choice in
+├── skills/fault-triage.md    # symptom -> service, loaded only when relevant
 ├── lib/
 │   ├── state.ts              # durable per-session enquiry state
+│   ├── models.ts             # selectable model ids + validation
 │   └── quote-agent/          # framework-agnostic domain logic
 │       ├── types.ts
 │       ├── pricing.ts
@@ -165,15 +194,18 @@ agent/
     ├── lookup_postcode.ts
     ├── calculate_quote.ts
     ├── check_job_eligibility.ts
-    └── request_booking.ts
+    ├── request_booking.ts    # gated on human approval
+    └── *.ts                  # disableTool() sentinels for the unused defaults
 
 app/
 ├── page.tsx                  # business landing page
 ├── s/                        # eve's generated chat UI (durable sessions)
 └── _components/
-    ├── agent-chat.tsx        # eve chat scaffold
+    ├── agent-chat.tsx        # eve chat scaffold, empty-state, starters
     ├── agent-message.tsx     # tool-call rendering, incl. the quote card
-    └── quote-card.tsx        # itemised quote / review-status UI
+    ├── quote-card.tsx        # itemised quote / review-status UI
+    ├── model-picker.tsx      # model dropdown, persisted in localStorage
+    └── friendly-error.ts     # maps raw failures to customer-facing wording
 
 evals/                        # deterministic checks on the pipeline's guarantees
 ```
