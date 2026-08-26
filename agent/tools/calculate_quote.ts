@@ -1,9 +1,28 @@
 import { defineTool } from "eve/tools";
 import { z } from "zod";
 import { activeBusiness as config } from "../lib/quote-agent/config";
+import type { Enquiry } from "../lib/quote-agent/types";
 import { findMissingFields } from "../lib/quote-agent/eligibility";
 import { calculateQuote, findService } from "../lib/quote-agent/pricing";
 import { enquiryState } from "../lib/state";
+
+const DETAIL_FIELD_IDS = new Set(config.jobDetailFields.map((f) => f.id));
+
+/**
+ * Built from the business's own `jobDetailFields` rather than hand-written,
+ * so a different business's config changes what this tool asks for without
+ * touching this file. `serviceId` and `preferredDate` are the only fixed
+ * keys — everything else is whatever the business declared.
+ */
+const detailFieldsShape = Object.fromEntries(
+  config.jobDetailFields.map((field) => {
+    const base = field.type === "number" ? z.number() : z.string();
+    const description = field.example
+      ? `${field.label} — e.g. '${field.example}'`
+      : field.label;
+    return [field.id, base.optional().describe(description)];
+  }),
+);
 
 export default defineTool({
   description: `Apply ${config.businessName}'s configured pricing rules to the job. Requires lookup_postcode to have confirmed an in-area postcode first. Returns needs_info naming exactly which details are still outstanding, service_not_offered, or quote_ready. This tool deliberately returns NO prices — call check_job_eligibility to obtain the figures you are allowed to share with the customer.`,
@@ -13,16 +32,8 @@ export default defineTool({
       .describe(
         `The configured service id. One of: ${config.services.map((s) => s.id).join(", ")}.`,
       ),
-    vehicleMake: z.string().optional().describe("e.g. 'Ford'"),
-    vehicleModel: z.string().optional().describe("e.g. 'Focus'"),
-    vehicleYear: z.number().int().optional(),
-    faultDescription: z
-      .string()
-      .optional()
-      .describe(
-        "The customer's own description of the symptoms. Required for diagnostic services.",
-      ),
     preferredDate: z.string().optional(),
+    ...detailFieldsShape,
   }),
   async execute(input) {
     const state = enquiryState.get();
@@ -53,13 +64,20 @@ export default defineTool({
     }
 
     // Merge what we've just been told into the durable enquiry. Only defined
-    // values overwrite — a field omitted on this call keeps its earlier answer.
-    const enquiry = {
+    // values overwrite — a field omitted on this call keeps its earlier
+    // answer. serviceId and preferredDate are fixed keys; everything else
+    // is a business-declared detail field, keyed by id.
+    const enquiry: Enquiry = {
       ...state.enquiry,
-      ...Object.fromEntries(
-        Object.entries(input).filter(([, value]) => value !== undefined),
-      ),
+      serviceId: input.serviceId,
+      preferredDate: input.preferredDate ?? state.enquiry.preferredDate,
+      details: { ...state.enquiry.details },
     };
+    for (const [key, value] of Object.entries(input)) {
+      if (value !== undefined && DETAIL_FIELD_IDS.has(key)) {
+        enquiry.details[key] = value as string | number;
+      }
+    }
     enquiryState.update((s) => ({ ...s, enquiry, quote: null }));
 
     const missingFields = findMissingFields(enquiry, config);

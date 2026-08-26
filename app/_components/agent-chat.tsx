@@ -30,15 +30,12 @@ import { ModelPicker, useSelectedModel } from "./model-picker";
 const AGENT_NAME = activeBusiness.businessName;
 
 /**
- * Shown on the empty chat so someone arriving cold knows what this is for and
- * what a useful first message looks like. Each one is a complete enquiry —
- * postcode, vehicle, symptom — because that is what gets to a quote fastest.
+ * Shown on the empty chat so someone arriving cold knows what a useful first
+ * message looks like. Comes from the business config rather than being
+ * hardcoded here, since a useful example enquiry is inherently
+ * business-specific — a mechanic's and a gardener's read nothing alike.
  */
-const STARTERS = [
-  "My battery's dead — I'm at CR0 2RF with a 2018 Ford Focus.",
-  "My car won't start, I'm at CR0 2RF in a Ford Focus.",
-  "I need new brake pads on my Vauxhall Corsa, CR0 2RF.",
-] as const;
+const STARTERS = activeBusiness.exampleEnquiries ?? [];
 
 export function AgentChat({
   sessionId,
@@ -214,7 +211,7 @@ export function AgentChat({
               Get a quote in a couple of minutes
             </h1>
             <p className="max-w-md text-balance text-muted-foreground">
-              Tell me where the vehicle is, what it is, and what it&apos;s doing.
+              Tell me the postcode and a few details about the job.
               You&apos;ll get an itemised price — or a straight answer if we
               can&apos;t help. We cover {activeBusiness.serviceRadiusMiles} miles
               around {activeBusiness.basePostcode}.
@@ -222,7 +219,7 @@ export function AgentChat({
           </div>
         )}
         <div className="w-full">{composer}</div>
-        {showConversationLayout ? null : (
+        {showConversationLayout || STARTERS.length === 0 ? null : (
           <div className="flex w-full flex-wrap justify-center gap-2">
             {STARTERS.map((starter) => (
               <Button

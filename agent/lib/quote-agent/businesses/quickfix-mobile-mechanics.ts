@@ -31,7 +31,6 @@ export const quickfixMobileMechanics: BusinessConfig = {
       pricingModel: "flat",
       flatRate: 80,
       partsEstimateRange: [50, 90],
-      faultDescriptionRequired: false,
     },
     {
       id: "brake-pad-replacement",
@@ -40,7 +39,6 @@ export const quickfixMobileMechanics: BusinessConfig = {
       pricingModel: "flat",
       flatRate: 120,
       partsEstimateRange: [40, 120],
-      faultDescriptionRequired: false,
     },
     {
       id: "tyre-replacement",
@@ -49,7 +47,6 @@ export const quickfixMobileMechanics: BusinessConfig = {
       pricingModel: "flat",
       flatRate: 60,
       partsEstimateRange: [45, 150],
-      faultDescriptionRequired: false,
     },
     {
       id: "wont-start-diagnostics",
@@ -59,7 +56,6 @@ export const quickfixMobileMechanics: BusinessConfig = {
       pricingModel: "time-based",
       estimatedHours: 1,
       hourlyRate: 65,
-      faultDescriptionRequired: true,
     },
     {
       id: "strange-noise-diagnostics",
@@ -69,7 +65,6 @@ export const quickfixMobileMechanics: BusinessConfig = {
       pricingModel: "time-based",
       estimatedHours: 1,
       hourlyRate: 65,
-      faultDescriptionRequired: true,
     },
   ],
 
@@ -106,7 +101,8 @@ export const quickfixMobileMechanics: BusinessConfig = {
     {
       id: "safety-critical",
       condition: {
-        kind: "faultDescriptionMatches",
+        kind: "detailMatches",
+        fieldId: "faultDescription",
         pattern: "brake|smoke|steering|accident|airbag",
         flags: "i",
       },
@@ -117,5 +113,45 @@ export const quickfixMobileMechanics: BusinessConfig = {
     },
   ],
 
-  requiredEnquiryFields: ["postcode", "serviceId", "vehicleMake", "vehicleModel"],
+  jobDetailFields: [
+    {
+      id: "vehicleMake",
+      label: "the vehicle make",
+      type: "text",
+      example: "Ford",
+      requirement: { kind: "always" },
+    },
+    {
+      id: "vehicleModel",
+      label: "the vehicle model",
+      type: "text",
+      example: "Focus",
+      requirement: { kind: "always" },
+    },
+    {
+      id: "vehicleYear",
+      label: "the vehicle year",
+      type: "number",
+      requirement: { kind: "optional" },
+    },
+    {
+      id: "faultDescription",
+      label: "a description of the fault",
+      type: "text",
+      requirement: {
+        kind: "forServices",
+        serviceIds: ["wont-start-diagnostics", "strange-noise-diagnostics"],
+      },
+      missingFieldReason:
+        "This is a diagnostic job, so we need a description of what the vehicle is doing before we can estimate the time.",
+    },
+  ],
+
+  bookingReferencePrefix: "QF",
+
+  exampleEnquiries: [
+    "My battery's dead — I'm at CR0 2RF with a 2018 Ford Focus.",
+    "My car won't start, I'm at CR0 2RF in a Ford Focus.",
+    "I need new brake pads on my Vauxhall Corsa, CR0 2RF.",
+  ],
 };

@@ -1,4 +1,3 @@
-import { findService } from "./pricing";
 import type {
   BusinessConfig,
   Enquiry,
@@ -7,19 +6,11 @@ import type {
   Quote,
 } from "./types";
 
-const FIELD_LABELS: Record<string, string> = {
-  postcode: "the postcode the vehicle is at",
-  serviceId: "which job you need doing",
-  vehicleMake: "the vehicle make",
-  vehicleModel: "the vehicle model",
-  faultDescription: "a description of the fault",
-};
-
 /**
- * Which required fields are still outstanding. Universal requirements come
- * from config; `faultDescription` is required only for services that declare
- * it, because a diagnostic job can't be estimated without it while a battery
- * swap can.
+ * Which job-detail fields are still outstanding for this enquiry. `postcode`
+ * and `serviceId` are never checked here — the pipeline already guarantees
+ * both by the time this runs (lookup_postcode confirms the postcode;
+ * calculate_quote rejects an unknown serviceId before this is called).
  */
 export function findMissingFields(
   enquiry: Enquiry,
@@ -27,28 +18,23 @@ export function findMissingFields(
 ): MissingField[] {
   const missing: MissingField[] = [];
 
-  for (const field of config.requiredEnquiryFields) {
-    const value = enquiry[field];
+  for (const field of config.jobDetailFields) {
+    const required =
+      field.requirement.kind === "always" ||
+      (field.requirement.kind === "forServices" &&
+        enquiry.serviceId !== undefined &&
+        field.requirement.serviceIds.includes(enquiry.serviceId));
+    if (!required) continue;
+
+    const value = enquiry.details[field.id];
     if (value === undefined || String(value).trim() === "") {
       missing.push({
-        field,
-        reason: `We need ${FIELD_LABELS[field] ?? field} before we can price this up.`,
+        field: field.id,
+        reason:
+          field.missingFieldReason ??
+          `We need ${field.label} before we can price this up.`,
       });
     }
-  }
-
-  const service = enquiry.serviceId
-    ? findService(enquiry.serviceId, config)
-    : undefined;
-  if (
-    service?.faultDescriptionRequired &&
-    (enquiry.faultDescription === undefined ||
-      enquiry.faultDescription.trim() === "")
-  ) {
-    missing.push({
-      field: "faultDescription",
-      reason: `"${service.name}" is a diagnostic job, so we need a description of what the vehicle is doing before we can estimate the time.`,
-    });
   }
 
   return missing;
@@ -83,13 +69,13 @@ export function evaluateReviewRules(
       case "borderlineServiceArea":
         hit = borderlineServiceArea;
         break;
-      case "faultDescriptionMatches":
+      case "detailMatches": {
+        const value = enquiry.details[condition.fieldId];
         hit =
-          enquiry.faultDescription !== undefined &&
-          new RegExp(condition.pattern, condition.flags ?? "").test(
-            enquiry.faultDescription,
-          );
+          typeof value === "string" &&
+          new RegExp(condition.pattern, condition.flags ?? "").test(value);
         break;
+      }
       case "serviceIn":
         hit =
           enquiry.serviceId !== undefined &&

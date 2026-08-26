@@ -11,7 +11,7 @@ export default defineTool({
     postcode: z
       .string()
       .min(2)
-      .describe("The UK postcode where the vehicle is located, e.g. 'CR0 2RF'."),
+      .describe("The UK postcode where the job is, e.g. 'CR0 2RF'."),
   }),
   async execute({ postcode }) {
     const result = await lookupPostcode(postcode, config);

@@ -48,7 +48,7 @@ export interface EnquiryState {
 export const enquiryState = defineState<EnquiryState>(
   "quote-agent.enquiry",
   () => ({
-    enquiry: {},
+    enquiry: { details: {} },
     postcode: null,
     quote: null,
     internalReviewReasons: [],

@@ -23,13 +23,8 @@ export interface ServiceDefinition {
   /** Both required when pricingModel === "time-based". */
   estimatedHours?: number;
   hourlyRate?: number;
-  /** [low, high] parts estimate. Omitted for labour-only services. */
+  /** [low, high] materials/parts estimate. Omitted for labour-only services. */
   partsEstimateRange?: [number, number];
-  /**
-   * Vague/diagnostic services can't be estimated at all without the
-   * customer describing the fault, so they make it a hard requirement.
-   */
-  faultDescriptionRequired: boolean;
 }
 
 /**
@@ -40,12 +35,13 @@ export type ReviewCondition =
   | { kind: "jobValueAbove"; amount: number }
   | { kind: "jobValueBelowMinimum" }
   | { kind: "borderlineServiceArea" }
-  | { kind: "faultDescriptionMatches"; pattern: string; flags?: string }
+  /** Matches a job-detail field's text against a pattern, e.g. safety keywords. */
+  | { kind: "detailMatches"; fieldId: string; pattern: string; flags?: string }
   /**
    * Always review these services, whatever the customer wrote. Needed because
-   * keyword matching only sees `faultDescription`, which is optional on
-   * flat-rate services — a customer naming a safety-critical job outright
-   * would otherwise skip review entirely.
+   * a `detailMatches` rule only sees a field that's actually present, which
+   * may be optional on flat-rate services — a customer naming a
+   * safety-critical job outright would otherwise skip review entirely.
    */
   | { kind: "serviceIn"; serviceIds: string[] };
 
@@ -64,12 +60,44 @@ export interface ReviewRule {
   customerExplanation: string;
 }
 
-/** Fields every enquiry must supply, regardless of service. */
-export type RequiredEnquiryField =
-  | "postcode"
-  | "serviceId"
-  | "vehicleMake"
-  | "vehicleModel";
+/**
+ * When a job-detail field must be answered. `postcode` and `serviceId` are
+ * never part of this list — the pipeline itself guarantees both are present
+ * and valid before a job-detail field is ever checked (lookup_postcode
+ * confirms the postcode; calculate_quote rejects an unknown serviceId before
+ * looking at anything else).
+ */
+export type JobDetailRequirement =
+  | { kind: "always" }
+  | { kind: "optional" }
+  /** Required only for the named services — e.g. a fault description that's
+   * only needed for diagnostic-style jobs. */
+  | { kind: "forServices"; serviceIds: string[] };
+
+/**
+ * One piece of job-specific information a business needs before it can quote
+ * — a mobile mechanic's vehicle make, a gardener's plot size, a
+ * photographer's guest count. This is the whole of what varies between
+ * businesses about what an enquiry collects: the pipeline, the tools, and
+ * the review-rule matching are the same regardless of which fields a
+ * business declares here.
+ */
+export interface JobDetailField {
+  /** Key this field is stored under in `Enquiry.details`, and read back by
+   * `detailMatches` review conditions. */
+  id: string;
+  /** Shown to the customer in "we need ___" copy and to the model as the
+   * tool-schema description. */
+  label: string;
+  type: "text" | "number";
+  /** Shown to the model as a worked example, e.g. "Ford" for a make. */
+  example?: string;
+  requirement: JobDetailRequirement;
+  /** Overrides the generic "We need {label}..." wording when asking for
+   * this field — for phrasing that explains *why* (e.g. "this is a
+   * diagnostic job, so..."). */
+  missingFieldReason?: string;
+}
 
 export interface BusinessConfig {
   businessName: string;
@@ -89,7 +117,18 @@ export interface BusinessConfig {
   vatRate?: number;
   services: ServiceDefinition[];
   reviewRules: ReviewRule[];
-  requiredEnquiryFields: RequiredEnquiryField[];
+  /** What this business needs to know about a job beyond postcode/service —
+   * see `JobDetailField`. */
+  jobDetailFields: JobDetailField[];
+  /** Short prefix for booking references, e.g. "QF" -> "QF-A1B2C3". */
+  bookingReferencePrefix: string;
+  /**
+   * A few complete example enquiries shown as tappable starters on the empty
+   * chat. Each one should be answerable in one message — postcode, service,
+   * and whatever job-detail fields make it a real enquiry. Optional: a
+   * business that doesn't supply any just gets no starter suggestions.
+   */
+  exampleEnquiries?: readonly string[];
 }
 
 /**
@@ -100,16 +139,14 @@ export interface BusinessConfig {
 export interface Enquiry {
   postcode?: string;
   serviceId?: string;
-  vehicleMake?: string;
-  vehicleModel?: string;
-  vehicleYear?: number;
-  faultDescription?: string;
   preferredDate?: string;
+  /** Business-specific answers, keyed by `JobDetailField.id`. */
+  details: Record<string, string | number>;
 }
 
 /**
  * A quote line. `amountMax` is present only when the line is genuinely a
- * range (parts we can't know until we've seen the car); a fixed line has
+ * range (materials we can't cost until we've seen the job); a fixed line has
  * `amount` alone.
  */
 export interface QuoteLineItem {

@@ -68,10 +68,10 @@ export function calculateQuote(
   if (service.partsEstimateRange) {
     const [low, high] = service.partsEstimateRange;
     lineItems.push({
-      label: "Parts (estimate)",
+      label: "Materials (estimate)",
       amount: money(low),
       amountMax: money(high),
-      note: "Confirmed once the mechanic has seen the vehicle.",
+      note: "Confirmed once we've taken a closer look.",
     });
   }
 
@@ -105,12 +105,12 @@ export function calculateQuote(
   const disclaimers: string[] = [];
   if (isEstimate) {
     disclaimers.push(
-      "This is an estimate. Parts costs are confirmed on inspection.",
+      "This is an estimate. Costs are confirmed on inspection.",
     );
   }
   if (service.pricingModel === "time-based") {
     disclaimers.push(
-      "Diagnostic time is estimated. Any repair is quoted separately once the fault is known.",
+      "This covers time for the initial visit only. Any further work is quoted separately once we know what's needed.",
     );
   }
 

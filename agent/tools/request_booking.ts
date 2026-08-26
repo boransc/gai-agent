@@ -11,7 +11,7 @@ export default defineTool({
     contactPhone: z
       .string()
       .min(6)
-      .describe("A phone number the mechanic can reach them on."),
+      .describe("A phone number we can reach them on."),
     preferredDate: z
       .string()
       .optional()
@@ -42,7 +42,7 @@ export default defineTool({
         : ("callback_requested" as const);
 
     const record = {
-      reference: `QF-${ctx.callId.slice(-6).toUpperCase()}`,
+      reference: `${config.bookingReferencePrefix}-${ctx.callId.slice(-6).toUpperCase()}`,
       contactName,
       contactPhone,
       preferredDate,
@@ -58,7 +58,7 @@ export default defineTool({
       alreadyRecorded: false as const,
       message:
         kind === "booked"
-          ? `Confirm the reference and tell them a mechanic will be in touch to agree a time. Do not invent a specific appointment slot — none has been assigned.`
+          ? `Confirm the reference and tell them someone will be in touch to agree a time. Do not invent a specific appointment slot — none has been assigned.`
           : `Explain that this is a callback request, not a confirmed booking, and that ${config.businessName} will be in touch to go through the details.`,
     };
   },

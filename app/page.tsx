@@ -18,7 +18,7 @@ export default function Home() {
           {activeBusiness.businessName}
         </h1>
         <p className="mt-4 text-zinc-600 dark:text-zinc-300">
-          Tell us where the vehicle is and what it&apos;s doing, and you&apos;ll
+          Tell us the postcode and a few details about the job, and you&apos;ll
           get an itemised quote in a couple of minutes. We cover{" "}
           {activeBusiness.serviceRadiusMiles} miles around{" "}
           {activeBusiness.basePostcode}.
@@ -53,8 +53,8 @@ export default function Home() {
         </ul>
         <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">
           Prices include the {currency.format(activeBusiness.callOutFee)}{" "}
-          call-out fee and exclude parts. Every quote is confirmed against your
-          vehicle and location before it&apos;s booked.
+          call-out fee and exclude materials. Every quote is confirmed against
+          your job details and location before it&apos;s booked.
         </p>
       </main>
     </div>
