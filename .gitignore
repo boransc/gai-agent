@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the checked-in template, which holds names only, never values.
+!.env.example
 
 # vercel
 .vercel
@@ -43,5 +45,5 @@ next-env.d.ts
 # eve local runtime cache, logs, and dev-server state
 /.eve/
 
-.vercel
-.env*
+# local scratch space — notes, drafts, throwaway files
+/.scratch/
