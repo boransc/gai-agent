@@ -1,4 +1,9 @@
-import { FileTextIcon, SearchXIcon } from "lucide-react";
+import { ChevronDownIcon, FileTextIcon, SearchXIcon } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 /**
  * The payload returned by the search_documents tool. Mirrored rather than
@@ -55,34 +60,37 @@ export function RetrievedSources({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-card text-sm">
-      <div className="flex items-center gap-2 border-b border-border px-3 py-2 text-xs text-muted-foreground">
-        <FileTextIcon className="size-3.5" />
-        <span>
+    <Collapsible className="rounded-lg border border-border bg-card text-sm">
+      <CollapsibleTrigger className="group flex w-full items-center gap-2 px-3 py-2 text-xs text-muted-foreground outline-none hover:bg-muted/40">
+        <FileTextIcon className="size-3.5 shrink-0" />
+        <span className="flex-1 text-left">
           {payload.matches.length} passage
           {payload.matches.length === 1 ? "" : "s"} retrieved for &ldquo;
           {payload.query}&rdquo;
         </span>
-      </div>
-      <div className="divide-y divide-border">
-        {payload.matches.map((match, index) => (
-          <div
-            className="px-3 py-2.5"
-            key={match.id ?? `${match.source}-${match.chunkIndex ?? index}`}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="truncate font-mono text-xs text-muted-foreground">
-                {match.source}
-                {match.chunkIndex !== undefined ? `#${match.chunkIndex}` : ""}
-              </span>
-              <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
-                {scorePercent(match.score)} match
-              </span>
+        <ChevronDownIcon className="size-3.5 shrink-0 transition-transform group-data-[panel-open]:rotate-180" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="border-t border-border">
+        <div className="divide-y divide-border">
+          {payload.matches.map((match, index) => (
+            <div
+              className="px-3 py-2.5"
+              key={match.id ?? `${match.source}-${match.chunkIndex ?? index}`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate font-mono text-xs text-muted-foreground">
+                  {match.source}
+                  {match.chunkIndex !== undefined ? `#${match.chunkIndex}` : ""}
+                </span>
+                <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs tabular-nums text-muted-foreground">
+                  {scorePercent(match.score)} match
+                </span>
+              </div>
+              <p className="mt-1 line-clamp-3 text-muted-foreground">{match.text}</p>
             </div>
-            <p className="mt-1 line-clamp-3 text-muted-foreground">{match.text}</p>
-          </div>
-        ))}
-      </div>
-    </div>
+          ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
