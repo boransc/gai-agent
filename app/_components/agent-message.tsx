@@ -38,6 +38,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { isQuoteCardPayload, QuoteCard } from "./quote-card";
+import { isRetrievedSourcesPayload, RetrievedSources } from "./retrieved-sources";
 
 export type AgentInputResponse = {
   readonly optionId?: string;
@@ -128,6 +129,16 @@ function AgentMessagePart({
         isQuoteCardPayload(part.output)
       ) {
         return <QuoteCard payload={part.output} />;
+      }
+
+      // search_documents returns retrieved passages; show what backed the
+      // answer rather than letting the generic tool view show raw JSON.
+      if (
+        part.toolName === "search_documents" &&
+        part.state === "output-available" &&
+        isRetrievedSourcesPayload(part.output)
+      ) {
+        return <RetrievedSources payload={part.output} />;
       }
 
       const inputRequest = part.toolMetadata?.eve?.inputRequest;
